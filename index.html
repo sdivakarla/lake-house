@@ -366,6 +366,85 @@
   }
   .delete-update-btn:hover { background: #e05050; color: white; }
 
+  /* PHOTO ATTACHMENTS */
+  .photo-upload-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 2px dashed #c0d8e8;
+    border-radius: 8px;
+    background: #f8fafd;
+    color: #4a6a8a;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .photo-upload-label:hover { border-color: #1a6b9a; background: #eef6ff; color: #1a6b9a; }
+  .photo-upload-label input { display: none; }
+  .photo-preview-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .photo-preview-item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+  }
+  .photo-preview-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1.5px solid #d0dae8;
+  }
+  .photo-preview-item button {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: #e05050;
+    color: white;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    padding: 0;
+  }
+  .attached-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .attached-photos img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1.5px solid #d0dae8;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .attached-photos img:hover { transform: scale(1.05); }
+  /* Lightbox */
+  #lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 92vw; max-height: 88vh; border-radius: 8px; }
+
   .empty-state {
     text-align: center;
     padding: 32px;
@@ -411,6 +490,11 @@
     onkeydown="if(event.key==='Enter') checkPassword()">
   <button onclick="checkPassword()">Unlock →</button>
   <div id="lock-error">Incorrect password. Try again.</div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="Photo">
 </div>
 
 <!-- MAIN CONTENT -->
@@ -635,6 +719,14 @@
       <label>Description</label>
       <textarea id="issue-desc" placeholder="Describe the issue, what happened, and any steps already taken..."></textarea>
     </div>
+    <div class="form-row">
+      <label>Photos (optional)</label>
+      <label class="photo-upload-label">
+        <input type="file" id="issue-photos" accept="image/*" multiple onchange="previewPhotos(this,'issue-preview')">
+        📷 Attach photos
+      </label>
+      <div class="photo-preview-wrap" id="issue-preview"></div>
+    </div>
     <button class="submit-btn" onclick="submitIssue()">Submit Issue</button>
   </div>
 
@@ -664,6 +756,14 @@
     <div class="form-row">
       <label>Message</label>
       <textarea id="update-text" placeholder="Share news, completed repairs, supply needs, or anything the family should know..."></textarea>
+    </div>
+    <div class="form-row">
+      <label>Photos (optional)</label>
+      <label class="photo-upload-label">
+        <input type="file" id="update-photos" accept="image/*" multiple onchange="previewPhotos(this,'update-preview')">
+        📷 Attach photos
+      </label>
+      <div class="photo-preview-wrap" id="update-preview"></div>
     </div>
     <button class="submit-btn" onclick="submitUpdate()">Post Update</button>
   </div>
@@ -767,6 +867,7 @@
     const name = document.getElementById('issue-name').value.trim();
     const desc = document.getElementById('issue-desc').value.trim();
     if (!name || !desc) { alert('Please fill in your name and a description.'); return; }
+    const photos = getPendingPhotos('issue-preview');
     const issues = getIssues();
     issues.unshift({
       id: Date.now(),
@@ -774,12 +875,15 @@
       cat: document.getElementById('issue-cat').value,
       urgency: document.getElementById('issue-urgency').value,
       desc,
+      photos,
       date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}),
       resolved: false
     });
     saveIssues(issues);
     document.getElementById('issue-name').value = '';
     document.getElementById('issue-desc').value = '';
+    document.getElementById('issue-photos').value = '';
+    document.getElementById('issue-preview').innerHTML = '';
     renderIssues();
   }
 
@@ -813,6 +917,7 @@
           ${!iss.resolved ? `<span class="urgency-badge ${iss.urgency}">${iss.urgency.charAt(0).toUpperCase()+iss.urgency.slice(1)}</span>` : ''}
         </div>
         <div class="issue-desc">${esc(iss.desc)}</div>
+        ${iss.photos && iss.photos.length ? `<div class="attached-photos">${iss.photos.map(p=>`<img src="${p}" onclick="openLightbox('${p}')" alt="photo">`).join('')}</div>` : ''}
         ${iss.resolved
           ? '<div class="resolved-tag">✅ Resolved</div>'
           : `<div class="issue-actions">
@@ -835,17 +940,21 @@
     const name = document.getElementById('update-name').value.trim();
     const text = document.getElementById('update-text').value.trim();
     if (!name || !text) { alert('Please fill in your name and a message.'); return; }
+    const photos = getPendingPhotos('update-preview');
     const updates = getUpdates();
     updates.unshift({
       id: Date.now(),
       name,
       cat: document.getElementById('update-cat').value,
       text,
+      photos,
       date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})
     });
     saveUpdates(updates);
     document.getElementById('update-name').value = '';
     document.getElementById('update-text').value = '';
+    document.getElementById('update-photos').value = '';
+    document.getElementById('update-preview').innerHTML = '';
     renderUpdates();
   }
 
@@ -870,12 +979,44 @@
           <span class="update-cat">${esc(u.cat)}</span>
         </div>
         <div class="update-text">${esc(u.text)}</div>
+        ${u.photos && u.photos.length ? `<div class="attached-photos">${u.photos.map(p=>`<img src="${p}" onclick="openLightbox('${p}')" alt="photo">`).join('')}</div>` : ''}
         <button class="delete-update-btn" onclick="deleteUpdate(${u.id})">✕ Remove</button>
       </div>`).join('');
   }
 
   function esc(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Photos ────────────────────────────────────────────
+  function previewPhotos(input, previewId) {
+    const wrap = document.getElementById(previewId);
+    const files = Array.from(input.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const item = document.createElement('div');
+        item.className = 'photo-preview-item';
+        item.innerHTML = `<img src="${e.target.result}"><button onclick="this.parentElement.remove()" title="Remove">✕</button>`;
+        item.querySelector('img').dataset.src = e.target.result;
+        wrap.appendChild(item);
+      };
+      reader.readAsDataURL(file);
+    });
+    input.value = '';
+  }
+
+  function getPendingPhotos(previewId) {
+    const wrap = document.getElementById(previewId);
+    return Array.from(wrap.querySelectorAll('img')).map(img => img.src);
+  }
+
+  function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
   }
 
   // ── Init ───────────────────────────────────────────────
