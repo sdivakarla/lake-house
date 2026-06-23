@@ -855,55 +855,44 @@
     Object.keys(sectionCounts).forEach(sec => updateBadge(sec));
   }
 
-  // ── Issues ─────────────────────────────────────────────
-  function getIssues() {
-    return JSON.parse(localStorage.getItem('lh_issues') || '[]');
-  }
-  function saveIssues(issues) {
-    localStorage.setItem('lh_issues', JSON.stringify(issues));
-  }
-
-  function submitIssue() {
+  // ── Issues (Firebase) ─────────────────────────────────
+  async function submitIssue() {
     const name = document.getElementById('issue-name').value.trim();
     const desc = document.getElementById('issue-desc').value.trim();
     if (!name || !desc) { alert('Please fill in your name and a description.'); return; }
-    const photos = getPendingPhotos('issue-preview');
-    const issues = getIssues();
-    issues.unshift({
-      id: Date.now(),
-      name,
-      cat: document.getElementById('issue-cat').value,
-      urgency: document.getElementById('issue-urgency').value,
-      desc,
-      photos,
-      date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}),
-      resolved: false
-    });
-    saveIssues(issues);
-    document.getElementById('issue-name').value = '';
-    document.getElementById('issue-desc').value = '';
-    document.getElementById('issue-photos').value = '';
-    document.getElementById('issue-preview').innerHTML = '';
-    renderIssues();
+    const btn = document.querySelector('#tab-issues .submit-btn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    try {
+      const photos = await uploadPhotos('issue-preview');
+      await db.collection('issues').add({
+        name,
+        cat: document.getElementById('issue-cat').value,
+        urgency: document.getElementById('issue-urgency').value,
+        desc,
+        photos,
+        date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}),
+        ts: firebase.firestore.FieldValue.serverTimestamp(),
+        resolved: false
+      });
+      document.getElementById('issue-name').value = '';
+      document.getElementById('issue-desc').value = '';
+      document.getElementById('issue-photos').value = '';
+      document.getElementById('issue-preview').innerHTML = '';
+    } catch(e) { alert('Error submitting: ' + e.message); }
+    btn.disabled = false; btn.textContent = 'Submit Issue';
   }
 
-  function resolveIssue(id) {
-    const issues = getIssues();
-    const i = issues.findIndex(x => x.id === id);
-    if (i >= 0) issues[i].resolved = true;
-    saveIssues(issues);
-    renderIssues();
+  async function resolveIssue(id) {
+    await db.collection('issues').doc(id).update({resolved: true});
   }
 
-  function deleteIssue(id) {
+  async function deleteIssue(id) {
     if (!confirm('Delete this issue?')) return;
-    saveIssues(getIssues().filter(x => x.id !== id));
-    renderIssues();
+    await db.collection('issues').doc(id).delete();
   }
 
-  function renderIssues() {
+  function renderIssues(issues) {
     const list = document.getElementById('issues-list');
-    const issues = getIssues();
     if (!issues.length) {
       list.innerHTML = '<div class="empty-state"><span class="icon">🎉</span>No issues reported. The house is in great shape!</div>';
       return;
@@ -921,52 +910,51 @@
         ${iss.resolved
           ? '<div class="resolved-tag">✅ Resolved</div>'
           : `<div class="issue-actions">
-              <button class="resolve-btn" onclick="resolveIssue(${iss.id})">✓ Mark Resolved</button>
-              <button class="delete-btn" onclick="deleteIssue(${iss.id})">✕ Delete</button>
+              <button class="resolve-btn" onclick="resolveIssue('${iss.id}')">✓ Mark Resolved</button>
+              <button class="delete-btn" onclick="deleteIssue('${iss.id}')">✕ Delete</button>
             </div>`
         }
       </div>`).join('');
   }
 
-  // ── Updates ────────────────────────────────────────────
-  function getUpdates() {
-    return JSON.parse(localStorage.getItem('lh_updates') || '[]');
-  }
-  function saveUpdates(updates) {
-    localStorage.setItem('lh_updates', JSON.stringify(updates));
+  function listenIssues() {
+    db.collection('issues').orderBy('ts', 'desc').onSnapshot(snap => {
+      renderIssues(snap.docs.map(d => ({id: d.id, ...d.data()})));
+    }, err => console.error('Issues listener error:', err));
   }
 
-  function submitUpdate() {
+  // ── Updates (Firebase) ─────────────────────────────────
+  async function submitUpdate() {
     const name = document.getElementById('update-name').value.trim();
     const text = document.getElementById('update-text').value.trim();
     if (!name || !text) { alert('Please fill in your name and a message.'); return; }
-    const photos = getPendingPhotos('update-preview');
-    const updates = getUpdates();
-    updates.unshift({
-      id: Date.now(),
-      name,
-      cat: document.getElementById('update-cat').value,
-      text,
-      photos,
-      date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})
-    });
-    saveUpdates(updates);
-    document.getElementById('update-name').value = '';
-    document.getElementById('update-text').value = '';
-    document.getElementById('update-photos').value = '';
-    document.getElementById('update-preview').innerHTML = '';
-    renderUpdates();
+    const btn = document.querySelector('#tab-updates .submit-btn');
+    btn.disabled = true; btn.textContent = 'Posting…';
+    try {
+      const photos = await uploadPhotos('update-preview');
+      await db.collection('updates').add({
+        name,
+        cat: document.getElementById('update-cat').value,
+        text,
+        photos,
+        date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}),
+        ts: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('update-name').value = '';
+      document.getElementById('update-text').value = '';
+      document.getElementById('update-photos').value = '';
+      document.getElementById('update-preview').innerHTML = '';
+    } catch(e) { alert('Error posting: ' + e.message); }
+    btn.disabled = false; btn.textContent = 'Post Update';
   }
 
-  function deleteUpdate(id) {
+  async function deleteUpdate(id) {
     if (!confirm('Delete this update?')) return;
-    saveUpdates(getUpdates().filter(x => x.id !== id));
-    renderUpdates();
+    await db.collection('updates').doc(id).delete();
   }
 
-  function renderUpdates() {
+  function renderUpdates(updates) {
     const list = document.getElementById('updates-list');
-    const updates = getUpdates();
     if (!updates.length) {
       list.innerHTML = '<div class="empty-state"><span class="icon">📣</span>No updates yet. Post the first one!</div>';
       return;
@@ -980,8 +968,14 @@
         </div>
         <div class="update-text">${esc(u.text)}</div>
         ${u.photos && u.photos.length ? `<div class="attached-photos">${u.photos.map(p=>`<img src="${p}" onclick="openLightbox('${p}')" alt="photo">`).join('')}</div>` : ''}
-        <button class="delete-update-btn" onclick="deleteUpdate(${u.id})">✕ Remove</button>
+        <button class="delete-update-btn" onclick="deleteUpdate('${u.id}')">✕ Remove</button>
       </div>`).join('');
+  }
+
+  function listenUpdates() {
+    db.collection('updates').orderBy('ts', 'desc').onSnapshot(snap => {
+      renderUpdates(snap.docs.map(d => ({id: d.id, ...d.data()})));
+    }, err => console.error('Updates listener error:', err));
   }
 
   function esc(str) {
@@ -991,14 +985,15 @@
   // ── Photos ────────────────────────────────────────────
   function previewPhotos(input, previewId) {
     const wrap = document.getElementById(previewId);
-    const files = Array.from(input.files);
-    files.forEach(file => {
+    Array.from(input.files).forEach(file => {
       const reader = new FileReader();
       reader.onload = e => {
         const item = document.createElement('div');
         item.className = 'photo-preview-item';
-        item.innerHTML = `<img src="${e.target.result}"><button onclick="this.parentElement.remove()" title="Remove">✕</button>`;
-        item.querySelector('img').dataset.src = e.target.result;
+        item.innerHTML = '<img><button title="Remove">✕</button>';
+        item.querySelector('img').src = e.target.result;
+        item.querySelector('img')._file = file;
+        item.querySelector('button').onclick = () => item.remove();
         wrap.appendChild(item);
       };
       reader.readAsDataURL(file);
@@ -1006,9 +1001,18 @@
     input.value = '';
   }
 
-  function getPendingPhotos(previewId) {
+  async function uploadPhotos(previewId) {
     const wrap = document.getElementById(previewId);
-    return Array.from(wrap.querySelectorAll('img')).map(img => img.src);
+    const imgs = Array.from(wrap.querySelectorAll('img'));
+    if (!imgs.length) return [];
+    const urls = await Promise.all(imgs.map(async img => {
+      const file = img._file;
+      if (!file) return img.src; // already a URL
+      const ref = storage.ref(`photos/${Date.now()}_${file.name}`);
+      await ref.put(file);
+      return await ref.getDownloadURL();
+    }));
+    return urls;
   }
 
   function openLightbox(src) {
@@ -1021,8 +1025,8 @@
 
   // ── Init ───────────────────────────────────────────────
   loadChecklist();
-  renderIssues();
-  renderUpdates();
+  listenIssues();
+  listenUpdates();
 
   // ── Password ───────────────────────────────────────────
   function checkPassword() {
