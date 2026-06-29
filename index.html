@@ -563,7 +563,8 @@
 
 <nav>
   <button class="active" onclick="showTab('info')">📋 Quick Info</button>
-  <button onclick="showTab('checklist')">✅ Checklist</button>
+  <button onclick="showTab('tips')">📝 Tips &amp; Check-In</button>
+  <button onclick="showTab('checkout')">✅ Check-Out</button>
   <button onclick="showTab('issues')">🔧 Report Issue</button>
   <button onclick="showTab('updates')">📣 Updates</button>
   <button onclick="showTab('guide')">📄 Full Guide</button>
@@ -646,7 +647,7 @@
 </div>
 
 <!-- CHECKLIST TAB -->
-<div id="tab-checklist" class="tab">
+<div id="tab-tips" class="tab">
 
   <div class="section-card">
     <div class="section-header" onclick="toggleSection(this)">
@@ -710,6 +711,11 @@
     </div>
   </div>
 
+</div>
+
+<!-- CHECKOUT TAB -->
+<div id="tab-checkout" class="tab">
+
   <div class="section-card">
     <div class="section-header" onclick="toggleSection(this)">
       <h3>🚪 Check-Out</h3>
@@ -732,6 +738,7 @@
       <div class="checklist-item" id="co-14"><input type="checkbox" onchange="updateCheck(this,'co-14','checkout')"><label>Hang DRY life jackets in queen bedroom closet (first floor). Damp ones in laundry room</label></div>
       <div class="checklist-item" id="co-15"><input type="checkbox" onchange="updateCheck(this,'co-15','checkout')"><label>Cover boat and jet ski. Raise boat lift fully. Leave at least ½ tank ethanol-free gas in boat</label></div>
       <div class="checklist-item" id="co-16"><input type="checkbox" onchange="updateCheck(this,'co-16','checkout')"><label>Remove garbage or place in Garbers' bins next door</label></div>
+      <div class="checklist-item" id="co-18"><input type="checkbox" onchange="updateCheck(this,'co-18','checkout')"><label>Note gas level of jet ski and boat (or last fill date) on the fridge list</label></div>
       <div class="checklist-item" id="co-17"><input type="checkbox" onchange="updateCheck(this,'co-17','checkout')"><label>Note any accidents or issues below in the Issue Report tab</label></div>
     </div>
   </div>
@@ -887,7 +894,7 @@
 
   // ── Checklist ──────────────────────────────────────────
   const sectionCounts = {
-    checkin: 9, boat: 5, jetski: 5, during: 7, checkout: 17
+    checkin: 9, boat: 5, jetski: 5, during: 7, checkout: 18
   };
 
   function loadChecklist() {
@@ -1130,7 +1137,7 @@
     'co-7':'Fridge photo taken','co-8':'Beds stripped & washed','co-9':'Porch curtains & door',
     'co-10':'Windows closed & locked','co-11':'Grill cleaned','co-12':'Outdoor chairs stored',
     'co-13':'Paddle boards & kayak in garage','co-14':'Life jackets in closet/laundry room',
-    'co-15':'Boat & jet ski covered, gas left','co-16':'Garbage removed','co-17':'Issues noted'
+    'co-15':'Boat & jet ski covered, gas left','co-16':'Garbage removed','co-17':'Issues noted','co-18':'Gas levels noted on fridge list'
   };
 
   async function completeCheckout() {
