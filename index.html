@@ -1185,16 +1185,16 @@
           ? '<div class="checkout-notes">Skipped: ' + esc(c.unchecked.slice(0,4).join(', ')) + (c.unchecked.length > 4 ? ' +' + (c.unchecked.length-4) + ' more' : '') + '</div>'
           : '';
         const notes = c.notes ? '<div class="checkout-notes">"' + esc(c.notes) + '"</div>' : '';
-        return \`<div class="checkout-history-item">
-          <div class="checkout-avatar">\${esc(initials)}</div>
-          <div class="checkout-info">
-            <span class="checkout-name">\${esc(c.name)}</span>
-            <span class="checkout-date">\${c.date || ''}</span>
-            <div class="checkout-items-done">\${esc(c.score)}</div>
-            \${missing}\${notes}
-          </div>
-          <span class="checkout-score \${full ? 'full' : 'partial'}">\${full ? '✓ Complete' : '⚠ Partial'}</span>
-        </div>\`;
+        return '<div class="checkout-history-item">' +
+          '<div class="checkout-avatar">' + esc(initials) + '</div>' +
+          '<div class="checkout-info">' +
+            '<span class="checkout-name">' + esc(c.name) + '</span>' +
+            '<span class="checkout-date">' + (c.date || '') + '</span>' +
+            '<div class="checkout-items-done">' + esc(c.score) + '</div>' +
+            missing + notes +
+          '</div>' +
+          '<span class="checkout-score ' + (full ? 'full' : 'partial') + '">' + (full ? '✓ Complete' : '⚠ Partial') + '</span>' +
+        '</div>';
       }).join('');
     });
   }
